@@ -8,71 +8,36 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import javax.swing.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Scraper {
 
-    public static List<Course> scrapeCourseData(String url) {
+    public static List<Course> scrapeCourseData(String url) throws IOException {
         List<Course> courses = new ArrayList<>();
 
-        // Prompt user for credentials using a simple GUI
-        String email = JOptionPane.showInputDialog(null, "Enter your Trinity email (Your Office 365 login is your TC username followed by @trincoll.edu. Example: jdoe5@trincoll.edu)", "Login", JOptionPane.PLAIN_MESSAGE);
-        if (email == null || email.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Email is required to proceed.", "Error", JOptionPane.ERROR_MESSAGE);
-            return courses;
-        }
-
-        JPasswordField passwordField = new JPasswordField();
-        int option = JOptionPane.showConfirmDialog(null, passwordField, "Enter your password:", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (option != JOptionPane.OK_OPTION || passwordField.getPassword().length == 0) {
-            JOptionPane.showMessageDialog(null, "Password is required to proceed.", "Error", JOptionPane.ERROR_MESSAGE);
-            return courses;
-        }
-        String password = new String(passwordField.getPassword());
-
-        // Set up Chrome options (headless optional)
+        // Set up Chrome options
+        // Do not run headless
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless"); // Uncomment to run headless
+        Path userDataDir = Files.createTempDirectory("chrome-profile");
+        options.addArguments("--user-data-dir=" + userDataDir.toString());
         WebDriver driver = new ChromeDriver(options);
+
 
         try {
             driver.get(url);
 
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(60));
-            WebElement emailField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("i0116")));
-            emailField.sendKeys(email);
-            driver.findElement(By.id("idSIButton9")).click(); // Click "Next"
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(120));
 
-            WebElement passwordFieldElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("i0118")));
-            passwordFieldElement.sendKeys(password);
-            driver.findElement(By.id("idSIButton9")).click(); // Click "Sign in"
+            // Wait for user to input credentials and handle the login process
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("i0116"))); // Wait for email input
+            System.out.println("Please log in using your Trinity credentials.");
 
-            // Wait for potential MFA prompt
-            try {
-                WebElement mfaPrompt = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("idDiv_SAOTCAS_Title")));
-                System.out.println("MFA code prompt detected. Please enter the code on your phone.");
-
-                WebElement signInRequestNumberElement = driver.findElement(By.id("idRichContext_DisplaySign"));
-                String signInRequestNumber = signInRequestNumberElement.getText();
-
-                JOptionPane.showMessageDialog(null,
-                        "MFA Code: " + signInRequestNumber + "\nOpen your Authenticator app, and enter the number shown to sign in.",
-                        "MFA Code Required", JOptionPane.INFORMATION_MESSAGE);
-
-                // Wait for a few seconds to allow manual MFA code entry
-                Thread.sleep(20000); // Wait for 20 seconds (adjust as needed)
-
-                // Handle "Stay signed in?" prompt if it appears
-                WebElement staySignedIn = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("idBtn_Back")));
-                staySignedIn.click(); // Choose "No"
-            } catch (Exception e) {
-                System.out.println("No MFA prompt detected or it was bypassed automatically.");
-            }
-
-
+            // Wait for the course table to load
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("tr.TITLE_row, tr.TITLE_row_alt")));
 
             List<WebElement> courseRows = driver.findElements(By.cssSelector("tr.TITLE_row, tr.TITLE_row_alt"));

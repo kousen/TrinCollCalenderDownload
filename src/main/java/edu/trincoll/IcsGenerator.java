@@ -18,6 +18,7 @@ public class IcsGenerator {
                 .append("PRODID:-//Trinity College//EN\n");
 
         // Define start and end date for the custom recurrence
+        // Want this changed to auto config
         String startDate = "20250121";  // January 21, 2025
         String endDate = "20250509";    // May 9, 2025
 
@@ -110,7 +111,7 @@ public class IcsGenerator {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         List<Course> courses = Scraper.scrapeCourseData("https://internet3.trincoll.edu/spTools/ClassSchedule.aspx");
         generateIcs(courses);
     }
