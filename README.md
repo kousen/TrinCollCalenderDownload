@@ -37,17 +37,26 @@ A helper class that represents a course with attributes such as:
 
 ---
 
+## Code Review
+
+A comprehensive code review is available in [CODE_REVIEW.md](CODE_REVIEW.md) that includes:
+- Security vulnerability analysis and fixes
+- Java modernization recommendations (upgrading to Java 21)
+- Testing strategies and examples
+- Architecture improvements
+
 ## Requirements
 
 ### Software
-- **Java 8 or higher**
+- **Java 8 or higher** (Java 21 recommended - see [CODE_REVIEW.md](CODE_REVIEW.md#additional-recommendations-java-modernization--testing))
 - **Selenium WebDriver**
 - **ChromeDriver**
 - **Maven** (for dependency management)
 
 ### Libraries
 - `selenium-java` (for web scraping)
-- `javax.swing` (for user input dialogs)
+- `jsoup` (for HTML parsing)
+- `junit` (for testing - currently using outdated version 3.8.1)
 
 ---
 
@@ -71,6 +80,7 @@ A helper class that represents a course with attributes such as:
       ```
       C:\Users\[YourUsername]\Downloads\courses.ics
       ```
+    - **Note**: This path is currently hardcoded and Windows-specific. See [CODE_REVIEW.md](CODE_REVIEW.md) for cross-platform improvements.
 
 ---
 
@@ -96,12 +106,22 @@ A helper class that represents a course with attributes such as:
 
 ---
 
+## Known Issues
+
+- **Security**: Temporary Chrome profiles are not cleaned up after use
+- **Platform Dependency**: Hardcoded Windows file paths
+- **Error Handling**: Generic exception catching masks real errors
+- **Dependencies**: Duplicate JSoup versions in pom.xml
+
+See [CODE_REVIEW.md](CODE_REVIEW.md) for detailed analysis and solutions.
+
 ## Future Improvements
 
 - **Error Handling**: Improve handling for non-standard course schedules.
-- **UI Enhancements**: Add a graphical user interface for easier interaction.
+- **Cross-Platform Support**: Make file paths work on all operating systems.
 - **Dynamic Dates**: Allow users to input custom semester start and end dates.
 - **Testing**: Add unit tests for ICS generation and scraping logic.
+- **Java Modernization**: Upgrade to Java 21 and use modern features like records and text blocks.
 
 ---
 # License
