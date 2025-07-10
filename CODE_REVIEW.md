@@ -213,3 +213,399 @@ For immediate impact, focus on:
 4. Add basic error messages instead of stack traces
 
 These changes would significantly improve security and usability with minimal effort.
+
+## Additional Recommendations: Java Modernization & Testing
+
+### 1. Upgrade to Java 21
+
+The project would benefit significantly from modern Java features. Update the `pom.xml`:
+
+```xml
+<properties>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+</properties>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.11.0</version>
+            <configuration>
+                <release>21</release>
+                <enablePreview>false</enablePreview>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+### 2. Convert Course to a Record
+
+The 49-line `Course` class can become a single line:
+
+```java
+public record Course(
+    String courseName,
+    String courseLink,
+    String instructor,
+    String type,
+    String days,
+    String times,
+    String location
+) {
+    // Add validation in compact constructor if needed
+    public Course {
+        Objects.requireNonNull(courseName, "Course name cannot be null");
+        Objects.requireNonNull(courseLink, "Course link cannot be null");
+    }
+}
+```
+
+### 3. Use Text Blocks for ICS Generation
+
+Replace string concatenation with formatted text blocks:
+
+```java
+private static final String ICS_HEADER = """
+    BEGIN:VCALENDAR
+    VERSION:2.0
+    CALSCALE:GREGORIAN
+    METHOD:PUBLISH
+    PRODID:-//Trinity College//EN
+    """;
+
+private static final String EVENT_TEMPLATE = """
+    BEGIN:VEVENT
+    SUMMARY:%s
+    DESCRIPTION:%s
+    LOCATION:%s
+    UID:%s@trincoll.edu
+    DTSTART;TZID=America/New_York:%s
+    DTEND;TZID=America/New_York:%s
+    %s
+    SEQUENCE:0
+    STATUS:CONFIRMED
+    TRANSP:OPAQUE
+    BEGIN:VALARM
+    TRIGGER:-PT15M
+    DESCRIPTION:Reminder
+    ACTION:DISPLAY
+    END:VALARM
+    END:VEVENT
+    """;
+
+// Usage:
+String event = EVENT_TEMPLATE.formatted(
+    course.courseName(),
+    course.courseLink(),
+    course.location(),
+    uid,
+    startDateTime,
+    endDateTime,
+    rrule
+);
+```
+
+### 4. Functional Programming Improvements
+
+#### In IcsGenerator:
+
+```java
+// Replace the day mapping loop with streams
+private static String expandDays(String days, Map<String, String> dayMap) {
+    return days.chars()
+        .mapToObj(c -> String.valueOf((char) c))
+        .map(dayMap::get)
+        .filter(Objects::nonNull)
+        .collect(Collectors.joining(","));
+}
+
+// Replace the course processing loop
+private static String generateEvents(List<Course> courses) {
+    return courses.stream()
+        .filter(course -> isValidSchedule(course))
+        .map(course -> generateEvent(course))
+        .collect(Collectors.joining("\n"));
+}
+
+private static boolean isValidSchedule(Course course) {
+    return course.days() != null && 
+           !course.days().trim().isEmpty() && 
+           !"TBA".equalsIgnoreCase(course.days()) &&
+           course.times() != null && 
+           !course.times().trim().isEmpty() && 
+           !"TBA".equalsIgnoreCase(course.times());
+}
+```
+
+#### In Scraper:
+
+```java
+// Use Optional for instructor email
+private static String extractInstructor(WebElement row) {
+    return row.findElements(By.cssSelector("a[href^=mailto]"))
+        .stream()
+        .findFirst()
+        .map(WebElement::getText)
+        .orElse("N/A");
+}
+
+// Combine console output into a single formatted string
+private static void logCourse(Course course) {
+    String courseInfo = """
+        Course Name: %s
+        Course Link: %s
+        Instructor: %s
+        Type: %s
+        Days: %s
+        Times: %s
+        Location: %s
+        ---------------------------
+        """.formatted(
+            course.courseName(),
+            course.courseLink(),
+            course.instructor(),
+            course.type(),
+            course.days(),
+            course.times(),
+            course.location()
+        );
+    System.out.println(courseInfo);
+}
+```
+
+### 5. Additional Modern Java Features
+
+#### Switch Expressions for Time Parsing:
+
+```java
+private static String parseTimeComponent(String component) {
+    return switch (component.toLowerCase()) {
+        case "tba", "tbd" -> "";
+        case String s when s.contains(":") -> convertTo24Hour(s);
+        default -> "0900"; // Default time
+    };
+}
+```
+
+#### Use java.time API Instead of SimpleDateFormat:
+
+```java
+private static String convertTo24HourFormat(String time12Hour) {
+    try {
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.US);
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("HHmm");
+        LocalTime time = LocalTime.parse(time12Hour.toUpperCase(), inputFormatter);
+        return time.format(outputFormatter);
+    } catch (DateTimeParseException e) {
+        logger.error("Failed to parse time: {}", time12Hour, e);
+        return "0900";
+    }
+}
+```
+
+#### Pattern Matching (Java 21):
+
+```java
+private static String extractValue(Object obj) {
+    return switch (obj) {
+        case String s when !s.isBlank() -> s.trim();
+        case String s -> "N/A";
+        case null -> "N/A";
+        default -> obj.toString();
+    };
+}
+```
+
+#### Try-with-resources Enhancement:
+
+```java
+private static void cleanupTempDirectory(Path tempDir) {
+    try (var paths = Files.walk(tempDir)) {
+        paths.sorted(Comparator.reverseOrder())
+            .map(Path::toFile)
+            .forEach(File::delete);
+    } catch (IOException e) {
+        logger.error("Failed to cleanup temp directory", e);
+    }
+}
+```
+
+### 6. Comprehensive Testing Strategy
+
+#### Unit Tests:
+
+```java
+// CourseTest.java
+@Test
+void testCourseRecordValidation() {
+    assertThrows(NullPointerException.class, 
+        () -> new Course(null, "link", "prof", "LEC", "MWF", "9:00am-10:15am", "Room 101"));
+}
+
+@Test
+void testCourseEquality() {
+    var course1 = new Course("CS101", "link", "prof", "LEC", "MWF", "9:00am-10:15am", "Room 101");
+    var course2 = new Course("CS101", "link", "prof", "LEC", "MWF", "9:00am-10:15am", "Room 101");
+    assertEquals(course1, course2);
+}
+
+// IcsGeneratorTest.java
+@ParameterizedTest
+@CsvSource({
+    "9:00am, 0900",
+    "2:30pm, 1430",
+    "12:00pm, 1200",
+    "12:30am, 0030"
+})
+void testTimeConversion(String input, String expected) {
+    assertEquals(expected, IcsGenerator.convertTo24HourFormat(input));
+}
+
+@Test
+void testDayExpansion() {
+    Map<String, String> dayMap = Map.of("M", "MO", "W", "WE", "F", "FR");
+    assertEquals("MO,WE,FR", IcsGenerator.expandDays("MWF", dayMap));
+}
+
+@Test
+void testIcsEventGeneration() {
+    var course = new Course("CS101", "http://link", "Dr. Smith", "LEC", "MWF", "9:00am-10:15am", "Room 101");
+    String ics = IcsGenerator.generateEvent(course);
+    
+    assertAll(
+        () -> assertTrue(ics.contains("SUMMARY:CS101")),
+        () -> assertTrue(ics.contains("LOCATION:Room 101")),
+        () -> assertTrue(ics.contains("RRULE:FREQ=WEEKLY")),
+        () -> assertTrue(ics.contains("BYDAY=MO,WE,FR"))
+    );
+}
+
+// ScraperTest.java
+@Test
+void testDaysAndTimesExtraction() {
+    String[] result = Scraper.extractDaysAndTimes("MWF: 9:00am - 10:15am");
+    assertArrayEquals(new String[]{"MWF", "9:00am-10:15am"}, result);
+}
+
+@Test
+void testTbaHandling() {
+    String[] result = Scraper.extractDaysAndTimes("TBA");
+    assertArrayEquals(new String[]{"", ""}, result);
+}
+```
+
+#### Integration Tests:
+
+```java
+@TestConfiguration
+public class MockWebDriverConfig {
+    @Bean
+    @Primary
+    public WebDriver mockWebDriver() {
+        WebDriver mockDriver = Mockito.mock(WebDriver.class);
+        // Configure mock behavior
+        return mockDriver;
+    }
+}
+
+@SpringBootTest
+class ScraperIntegrationTest {
+    @Test
+    void testFullScrapingWorkflow() {
+        // Test with mock HTML response
+    }
+}
+```
+
+#### Property-Based Testing with jqwik:
+
+```java
+@Property
+void allGeneratedIcsFilesAreValid(@ForAll @StringLength(min = 1, max = 50) String courseName,
+                                 @ForAll("validDays") String days,
+                                 @ForAll("validTimes") String times) {
+    var course = new Course(courseName, "http://link", "Prof", "LEC", days, times, "Room");
+    String ics = IcsGenerator.generateEvent(course);
+    
+    // Validate ICS format
+    assertTrue(ics.startsWith("BEGIN:VEVENT"));
+    assertTrue(ics.endsWith("END:VEVENT"));
+    assertTrue(ics.contains("UID:"));
+}
+
+@Provide
+Arbitrary<String> validDays() {
+    return Arbitraries.of("M", "T", "W", "R", "F", "MW", "TR", "MWF", "MTWR");
+}
+```
+
+### 7. Additional Improvements
+
+#### Dependency Injection with Spring Boot:
+
+```java
+@SpringBootApplication
+public class TrinityCalendarApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TrinityCalendarApplication.class, args);
+    }
+}
+
+@Service
+public class CalendarService {
+    private final Scraper scraper;
+    private final IcsGenerator generator;
+    
+    @Autowired
+    public CalendarService(Scraper scraper, IcsGenerator generator) {
+        this.scraper = scraper;
+        this.generator = generator;
+    }
+}
+```
+
+#### Configuration with @ConfigurationProperties:
+
+```java
+@ConfigurationProperties(prefix = "trinity.calendar")
+@Validated
+public class CalendarProperties {
+    @NotNull
+    private LocalDate semesterStart;
+    
+    @NotNull
+    private LocalDate semesterEnd;
+    
+    @NotBlank
+    private String scheduleUrl;
+    
+    private Path outputDirectory = Paths.get(System.getProperty("user.home"), "Downloads");
+    
+    // getters and setters
+}
+```
+
+#### Sealed Classes for Course Types:
+
+```java
+public sealed interface CourseComponent 
+    permits Lecture, Lab, Discussion, Seminar {
+    
+    String type();
+    String schedule();
+}
+
+public record Lecture(String schedule) implements CourseComponent {
+    public String type() { return "LEC"; }
+}
+
+public record Lab(String schedule) implements CourseComponent {
+    public String type() { return "LAB"; }
+}
+```
+
+These modernizations would transform the codebase into a more maintainable, testable, and idiomatic Java 21 application while maintaining backward compatibility where needed.
