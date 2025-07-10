@@ -120,3 +120,52 @@ See [CODE_REVIEW.md](CODE_REVIEW.md) for comprehensive analysis including:
 - Java 21 modernization
 - Testing strategies
 - Architecture improvements
+
+## Future Documentation & Project Management Plans
+
+### 1. Add LICENSE File
+- Currently states "proprietary" in README
+- Should have proper LICENSE file
+- Discuss licensing intentions with student first
+
+### 2. Create CONTRIBUTING.md
+If accepting contributions, include:
+- Code style guidelines
+- How to report issues
+- Pull request process
+- Development setup instructions
+
+### 3. GitHub Issue Templates
+Create `.github/ISSUE_TEMPLATE/` directory with:
+- `bug_report.md` - For reporting bugs
+- `feature_request.md` - For suggesting features
+- `security_vulnerability.md` - For security issues
+
+### 4. Add CHANGELOG.md
+Track version history:
+- Document GUI removal
+- Track future updates
+- Follow Keep a Changelog format
+
+### 5. Enhanced Documentation
+- Add example ICS file output in README
+- Include screenshots of:
+  - Login flow
+  - Generated calendar import
+- Add troubleshooting section for common issues:
+  - ChromeDriver version mismatches
+  - Authentication timeouts
+  - File permission errors
+
+### 6. GitHub Repository Metadata
+- Add repository topics: `trinity-college`, `calendar`, `web-scraper`, `selenium`, `java`
+- Update repository description to be more descriptive
+- Add website field pointing to Trinity College
+
+### 7. Additional Documentation Ideas
+- Create `docs/` folder with:
+  - Detailed setup guide
+  - Architecture diagrams
+  - API documentation (if refactored)
+- Add badges to README (build status, license, etc.)
+- Create GitHub Wiki for extended documentation
